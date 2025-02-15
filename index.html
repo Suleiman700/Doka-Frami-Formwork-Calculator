@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doka Frami Calculator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Doka Frami Formwork Calculator</h1>
+        <button id="resetBtn" class="btn btn-danger">Reset All Data</button>
+    </div>
+
+    <!-- Available Panels Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">Available Frami Panels</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <select id="standardPanels" class="form-select mb-3">
+                    <option value="">Select standard Frami panel...</option>
+                    <option value="90">Frami 90 (90cm)</option>
+                    <option value="75">Frami 75 (75cm)</option>
+                    <option value="60">Frami 60 (60cm)</option>
+                    <option value="45">Frami 45 (45cm)</option>
+                    <option value="30">Frami 30 (30cm)</option>
+                </select>
+            </div>
+
+            <form id="templateForm" class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" class="form-control" id="templateQuantity" min="1" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Length (cm)</label>
+                    <input type="number" class="form-control" id="templateLength" min="1" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-warning d-block">Add Panel</button>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                    <tr>
+                        <th>Quantity</th>
+                        <th>Panel Length (cm)</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="templateList"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Required Walls Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">Required Wall Lengths</h5>
+        </div>
+        <div class="card-body">
+            <form id="wallForm" class="row g-3 mb-3">
+                <div class="col-md-8">
+                    <label class="form-label">Wall Length (cm)</label>
+                    <input type="number" class="form-control" id="wallLength" min="1" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-warning d-block">Add Wall</button>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                    <tr>
+                        <th>Length (cm)</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="wallList"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calculate Button -->
+    <button id="calculateBtn" class="btn btn-warning btn-lg mb-4">Calculate Panel Layout</button>
+
+    <!-- Results Section -->
+    <div id="results" class="card d-none">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">Recommended Panel Layout</h5>
+        </div>
+        <div class="card-body">
+            <div id="resultContent"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let templates = [];
+        let walls = [];
+
+        // Load data from localStorage on page load
+        function loadSavedData() {
+            const savedTemplates = localStorage.getItem('framiTemplates');
+            const savedWalls = localStorage.getItem('framiWalls');
+
+            if (savedTemplates) {
+                templates = JSON.parse(savedTemplates);
+                updateTemplateList();
+            }
+
+            if (savedWalls) {
+                walls = JSON.parse(savedWalls);
+                updateWallList();
+            }
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('framiTemplates', JSON.stringify(templates));
+            localStorage.setItem('framiWalls', JSON.stringify(walls));
+        }
+
+        // Reset all data
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
+                templates = [];
+                walls = [];
+                localStorage.removeItem('framiTemplates');
+                localStorage.removeItem('framiWalls');
+                updateTemplateList();
+                updateWallList();
+                document.getElementById('results').classList.add('d-none');
+                document.getElementById('standardPanels').value = '';
+            }
+        });
+
+        // Handle Standard Panel Selection
+        document.getElementById('standardPanels').addEventListener('change', function(e) {
+            if (e.target.value) {
+                document.getElementById('templateLength').value = e.target.value;
+            }
+        });
+
+        // Add Template
+        document.getElementById('templateForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const quantity = parseInt(document.getElementById('templateQuantity').value);
+            const length = parseInt(document.getElementById('templateLength').value);
+
+            templates.push({ quantity, length });
+            updateTemplateList();
+            saveData();
+            this.reset();
+            document.getElementById('standardPanels').value = '';
+        });
+
+        // Add Wall
+        document.getElementById('wallForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const length = parseInt(document.getElementById('wallLength').value);
+
+            walls.push({ length });
+            updateWallList();
+            saveData();
+            this.reset();
+        });
+
+        // Update Template List
+        function updateTemplateList() {
+            const tbody = document.getElementById('templateList');
+            tbody.innerHTML = templates.map((template, index) => `
+                <tr>
+                    <td>${template.quantity}</td>
+                    <td>${template.length} cm ${getFramiName(template.length)}</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="removeTemplate(${index})">Remove</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getFramiName(length) {
+            const standardSizes = {
+                90: 'Frami 90',
+                75: 'Frami 75',
+                60: 'Frami 60',
+                45: 'Frami 45',
+                30: 'Frami 30'
+            };
+            return standardSizes[length] ? `(${standardSizes[length]})` : '';
+        }
+
+        // Update Wall List
+        function updateWallList() {
+            const tbody = document.getElementById('wallList');
+            tbody.innerHTML = walls.map((wall, index) => `
+                <tr>
+                    <td>${wall.length} cm</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="removeWall(${index})">Remove</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Make these functions global so they can be accessed by onclick handlers
+        window.removeTemplate = function(index) {
+            templates.splice(index, 1);
+            updateTemplateList();
+            saveData();
+        }
+
+        window.removeWall = function(index) {
+            walls.splice(index, 1);
+            updateWallList();
+            saveData();
+        }
+
+        // Calculate Template Usage
+        document.getElementById('calculateBtn').addEventListener('click', function() {
+            if (templates.length === 0 || walls.length === 0) {
+                alert('Please add both Frami panels and wall lengths first.');
+                return;
+            }
+
+            const results = calculateTemplateUsage(templates, walls);
+            displayResults(results);
+        });
+
+        function calculateTemplateUsage(templates, walls) {
+            let results = [];
+            const sortedWalls = [...walls].sort((a, b) => b.length - a.length);
+            let availableTemplates = templates.map(t => ({...t}));
+
+            for (let wall of sortedWalls) {
+                let wallSolution = {
+                    wallLength: wall.length,
+                    templatesUsed: [],
+                    possible: false
+                };
+
+                const sortedTemplates = [...availableTemplates]
+                    .filter(t => t.quantity > 0)
+                    .sort((a, b) => b.length - a.length);
+
+                let remainingLength = wall.length;
+                let usedTemplates = [];
+
+                for (let template of sortedTemplates) {
+                    while (remainingLength > 0 && template.quantity > 0) {
+                        if (template.length <= remainingLength) {
+                            usedTemplates.push({
+                                length: template.length,
+                                originalLength: template.length
+                            });
+                            remainingLength -= template.length;
+                            template.quantity--;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                if (remainingLength === 0) {
+                    wallSolution.possible = true;
+                    wallSolution.templatesUsed = usedTemplates;
+                }
+
+                results.push(wallSolution);
+            }
+
+            return results;
+        }
+
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('results');
+            const resultContent = document.getElementById('resultContent');
+
+            let html = '';
+
+            results.forEach((result, index) => {
+                html += `<div class="mb-4">
+                    <h6>Wall ${index + 1} (${result.wallLength} cm)</h6>`;
+
+                if (result.possible) {
+                    html += `<p class="text-success">✓ Solution found</p>
+                    <p>Panels to use:</p>
+                    <ul>`;
+
+                    const groupedTemplates = result.templatesUsed.reduce((acc, template) => {
+                        const key = template.length;
+                        acc[key] = (acc[key] || 0) + 1;
+                        return acc;
+                    }, {});
+
+                    for (const [length, count] of Object.entries(groupedTemplates)) {
+                        html += `<li>${count}x ${length} cm ${getFramiName(parseInt(length))}</li>`;
+                    }
+
+                    html += `</ul>
+                    <p class="text-muted">Note: Don't forget to add appropriate Frami clamps between panels.</p>`;
+                } else {
+                    html += `<p class="text-danger">✗ No solution found with available panels</p>`;
+                }
+
+                html += `</div>`;
+            });
+
+            resultContent.innerHTML = html;
+            resultsDiv.classList.remove('d-none');
+        }
+
+        // Load saved data
+        loadSavedData();
+    });
+</script>
+</body>
+</html>
