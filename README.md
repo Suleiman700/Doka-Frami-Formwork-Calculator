@@ -3,6 +3,8 @@
 ## Overview
 Doka Frami Formwork Calculator is a web-based tool that helps users plan and optimize panel layouts for Doka Frami formwork systems. It allows users to input available panel sizes, specify required wall lengths, and compute the best panel arrangement.
 
+![screencapture-localhost-63342-test-metal-test-html-2025-02-16-01_22_24](https://github.com/user-attachments/assets/2869200e-0702-4517-8bbf-496af01ffd76)
+
 ## Features
 - Add and manage available Frami panel sizes.
 - Input required wall lengths.
